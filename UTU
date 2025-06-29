@@ -1,0 +1,234 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local chestNames = {
+    "Chest_p",
+    "DarkChest_p",
+    "LightChest_p",
+    "PureDarkChest_p",
+    "Universe_Chestp",
+    "Cursed_Chest_p",
+    "oceanchest_p"
+}
+
+local teleporting = false
+local teleportIndex = 1
+local guiVisible = true
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ChestTeleporterGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 250, 0, 180) -- Increased height to fit new button
+frame.Position = UDim2.new(0.5, -125, 0.1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(38, 50, 56)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+frame.Active = true
+
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 15)
+frameCorner.Parent = frame
+
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.7
+shadow.ZIndex = 0
+shadow.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "Chest Teleporter"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 24
+title.TextColor3 = Color3.fromRGB(236, 240, 241)
+title.ZIndex = 2
+title.Parent = frame
+
+local dragBar = Instance.new("Frame")
+dragBar.Size = UDim2.new(1, 0, 0, 30)
+dragBar.BackgroundTransparency = 1
+dragBar.ZIndex = 3
+dragBar.Parent = frame
+
+local function createButton(text, posY)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 220, 0, 45)
+    btn.Position = UDim2.new(0, 15, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(69, 90, 100)
+    btn.TextColor3 = Color3.fromRGB(236, 240, 241)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 22
+    btn.Text = text
+    btn.ZIndex = 2
+    btn.Parent = frame
+    btn.AutoButtonColor = false
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = btn
+
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(100, 150, 170)
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(69, 90, 100)
+    end)
+
+    return btn
+end
+
+local toggleTeleportBtn = createButton("Start Teleport Loop", 40)
+local killAllBtn = createButton("Kill All", 90) -- New button added here
+
+-- Toggle Visibility Button
+local toggleVisibilityBtn = Instance.new("TextButton")
+toggleVisibilityBtn.Size = UDim2.new(0, 100, 0, 30)
+toggleVisibilityBtn.Position = UDim2.new(0.5, 135, 0.1, 5)
+toggleVisibilityBtn.BackgroundColor3 = Color3.fromRGB(69, 90, 100)
+toggleVisibilityBtn.TextColor3 = Color3.fromRGB(236, 240, 241)
+toggleVisibilityBtn.Font = Enum.Font.GothamSemibold
+toggleVisibilityBtn.TextSize = 18
+toggleVisibilityBtn.Text = "Hide GUI"
+toggleVisibilityBtn.ZIndex = 3
+toggleVisibilityBtn.Parent = screenGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 10)
+toggleCorner.Parent = toggleVisibilityBtn
+
+toggleVisibilityBtn.MouseEnter:Connect(function()
+    toggleVisibilityBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 170)
+end)
+toggleVisibilityBtn.MouseLeave:Connect(function()
+    toggleVisibilityBtn.BackgroundColor3 = Color3.fromRGB(69, 90, 100)
+end)
+
+-- Drag logic
+local dragging, dragInput, dragStart, startPos
+
+local function updatePosition(input)
+    local delta = input.Position - dragStart
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                               startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    toggleVisibilityBtn.Position = UDim2.new(0, frame.Position.X.Offset + frame.Size.X.Offset + 10, 0, frame.Position.Y.Offset + 5)
+end
+
+dragBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+dragBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        updatePosition(input)
+    end
+end)
+
+-- Teleport Logic
+local teleportConnection
+
+local function findChestPart(name)
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name == name then
+            return part
+        end
+    end
+    return nil
+end
+
+local function startTeleportLoop()
+    teleporting = true
+    toggleTeleportBtn.Text = "Stop Teleport Loop"
+    teleportConnection = RunService.Heartbeat:Connect(function()
+        if not teleporting then return end
+        local partName = chestNames[teleportIndex]
+        local chestPart = findChestPart(partName)
+        if chestPart and chestPart:IsA("BasePart") then
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CFrame = chestPart.CFrame * CFrame.new(0, 3, 0)
+                local chestModel = chestPart.Parent
+                if chestModel then
+                    for _, prompt in ipairs(chestModel:GetDescendants()) do
+                        if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                            prompt:InputHoldBegin()
+                            task.wait(0.3)
+                            prompt:InputHoldEnd()
+                        end
+                    end
+                end
+            end
+        end
+        teleportIndex = teleportIndex + 1
+        if teleportIndex > #chestNames then
+            teleportIndex = 1
+        end
+        task.wait(10)
+    end)
+end
+
+local function stopTeleportLoop()
+    teleporting = false
+    toggleTeleportBtn.Text = "Start Teleport Loop"
+    if teleportConnection then
+        teleportConnection:Disconnect()
+        teleportConnection = nil
+    end
+end
+
+-- New Kill All function (added here)
+local function killAllNPCs()
+    sethiddenproperty(player, "SimulationRadius", 112412400000)
+    sethiddenproperty(player, "MaxSimulationRadius", 112412400000)
+    for _, d in pairs(workspace:GetDescendants()) do
+        if d.ClassName == 'Humanoid' and d.Parent.Name ~= player.Name then
+            d.Health = 0
+        end
+    end
+end
+
+-- Button click handlers
+toggleTeleportBtn.MouseButton1Click:Connect(function()
+    if teleporting then
+        stopTeleportLoop()
+    else
+        startTeleportLoop()
+    end
+end)
+
+killAllBtn.MouseButton1Click:Connect(function()
+    killAllNPCs()
+end)
+
+-- Toggle GUI visibility
+toggleVisibilityBtn.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    frame.Visible = guiVisible
+    toggleVisibilityBtn.Text = guiVisible and "Hide GUI" or "Show GUI"
+end)
