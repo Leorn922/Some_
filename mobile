@@ -1,0 +1,555 @@
+local Players = game:GetService('Players')
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild('PlayerGui')
+local UserInputService = game:GetService("UserInputService")
+
+-- Store original hidden properties
+local originalSimulationRadius, originalMaxSimulationRadius
+pcall(function()
+    originalSimulationRadius = gethiddenproperty(player, "SimulationRadius")
+    originalMaxSimulationRadius = gethiddenproperty(player, "MaxSimulationRadius")
+end)
+
+-- State variables
+local tpCollectActive = false
+local tpCollectLoop = nil
+local autocollectActive = false
+local autocollectLoop = nil
+local autoBankEquipActive = false
+local autoBankEquipLoop = nil
+local killAllActive = false
+local killAllLoop = nil
+
+-- Detect if device is mobile
+local isMobile = UserInputService.TouchEnabled
+
+-- Size scaling function
+local function GetScaleFactor()
+    return isMobile and 0.75 or 1.0
+end
+
+-- Main GUI
+local gui = Instance.new('ScreenGui')
+gui.Name = 'ResponsiveGUI'
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 10
+gui.IgnoreGuiInset = true
+gui.Parent = playerGui
+
+-- Color scheme
+local colors = {
+    background = Color3.fromRGB(30, 30, 40),
+    header = Color3.fromRGB(40, 40, 50),
+    text = Color3.fromRGB(255, 255, 255),
+    subtext = Color3.fromRGB(200, 200, 200),
+    button = Color3.fromRGB(70, 70, 80),
+    buttonHover = Color3.fromRGB(90, 90, 100),
+    toggleOff = Color3.fromRGB(60, 60, 70),
+    toggleOn = Color3.fromRGB(0, 170, 127),
+    input = Color3.fromRGB(50, 50, 60),
+}
+
+-- Base sizes (will be scaled for mobile)
+local baseFrameWidth = 250
+local baseTitleHeight = 25
+local baseElementPadding = 4
+local baseSectionPadding = 8
+local baseTextSize = 12
+
+-- Calculate scaled dimensions
+local scaleFactor = GetScaleFactor()
+local frameWidth = baseFrameWidth * scaleFactor
+local titleHeight = baseTitleHeight * scaleFactor
+local elementPadding = baseElementPadding * scaleFactor
+local sectionPadding = baseSectionPadding * scaleFactor
+local textSize = baseTextSize * scaleFactor
+
+-- Main container
+local mainFrame = Instance.new('Frame')
+mainFrame.Name = 'MainFrame'
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = colors.background
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Size = UDim2.new(0, frameWidth, 0, 0)
+mainFrame.Parent = gui
+
+-- Round corners
+local corner = Instance.new('UICorner')
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Title bar
+local titleBar = Instance.new('Frame')
+titleBar.Name = 'TitleBar'
+titleBar.BackgroundColor3 = colors.header
+titleBar.BorderSizePixel = 0
+titleBar.Size = UDim2.new(1, 0, 0, titleHeight)
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new('UICorner')
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+local title = Instance.new('TextLabel')
+title.Name = 'Title'
+title.BackgroundTransparency = 1
+title.Position = UDim2.new(0, 10 * scaleFactor, 0, 0)
+title.Size = UDim2.new(1, -40 * scaleFactor, 1, 0)
+title.Font = Enum.Font.GothamSemibold
+title.Text = isMobile and 'Mobile GUI' or 'Desktop GUI'
+title.TextColor3 = colors.text
+title.TextSize = textSize
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+-- Close button
+local closeButton = Instance.new('TextButton')
+closeButton.Name = 'CloseButton'
+closeButton.AnchorPoint = Vector2.new(1, 0.5)
+closeButton.BackgroundTransparency = 1
+closeButton.Position = UDim2.new(1, -5 * scaleFactor, 0.5, 0)
+closeButton.Size = UDim2.new(0, 18 * scaleFactor, 0, 18 * scaleFactor)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Text = 'X'
+closeButton.TextColor3 = colors.text
+closeButton.TextSize = textSize
+closeButton.Parent = titleBar
+
+closeButton.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+-- Content frame
+local contentFrame = Instance.new('Frame')
+contentFrame.Name = 'ContentFrame'
+contentFrame.BackgroundTransparency = 1
+contentFrame.Position = UDim2.new(0, 8 * scaleFactor, 0, titleHeight + 5 * scaleFactor)
+contentFrame.Size = UDim2.new(1, -16 * scaleFactor, 1, -(titleHeight + 10 * scaleFactor))
+contentFrame.Parent = mainFrame
+
+-- Auto-layout variables
+local currentYPosition = 0
+
+-- Player input
+local playerInputFrame = Instance.new('Frame')
+playerInputFrame.Name = 'PlayerInputFrame'
+playerInputFrame.BackgroundTransparency = 1
+playerInputFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
+playerInputFrame.Size = UDim2.new(1, 0, 0, 45 * scaleFactor)
+playerInputFrame.Parent = contentFrame
+
+local playerLabel = Instance.new('TextLabel')
+playerLabel.Name = 'PlayerLabel'
+playerLabel.BackgroundTransparency = 1
+playerLabel.Position = UDim2.new(0, 0, 0, 0)
+playerLabel.Size = UDim2.new(1, 0, 0, 16 * scaleFactor)
+playerLabel.Font = Enum.Font.Gotham
+playerLabel.Text = 'Item Name for Banking:'
+playerLabel.TextColor3 = colors.subtext
+playerLabel.TextSize = textSize * 0.9
+playerLabel.TextXAlignment = Enum.TextXAlignment.Left
+playerLabel.Parent = playerInputFrame
+
+local playerInput = Instance.new('TextBox')
+playerInput.Name = 'PlayerInput'
+playerInput.BackgroundColor3 = colors.input
+playerInput.BorderSizePixel = 0
+playerInput.Position = UDim2.new(0, 0, 0, 18 * scaleFactor)
+playerInput.Size = UDim2.new(1, 0, 0, 25 * scaleFactor)
+playerInput.Font = Enum.Font.Gotham
+playerInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+playerInput.PlaceholderText = 'Item Name'
+playerInput.Text = ''
+playerInput.TextColor3 = colors.text
+playerInput.TextSize = textSize
+playerInput.TextXAlignment = Enum.TextXAlignment.Left
+playerInput.Parent = playerInputFrame
+
+local inputCorner = Instance.new('UICorner')
+inputCorner.CornerRadius = UDim.new(0, 4)
+inputCorner.Parent = playerInput
+
+local inputPadding = Instance.new('UIPadding')
+inputPadding.PaddingLeft = UDim.new(0, 6 * scaleFactor)
+inputPadding.Parent = playerInput
+
+currentYPosition = currentYPosition + 45 * scaleFactor + sectionPadding
+
+-- Function to update frame size
+local function UpdateFrameSize()
+    local totalHeight = titleHeight + 5 * scaleFactor + currentYPosition + 8 * scaleFactor
+    mainFrame.Size = UDim2.new(0, frameWidth, 0, totalHeight)
+end
+
+-- Element creation functions with scaling
+function CreateSection(titleText)
+    local sectionHeight = 16 * scaleFactor
+    local sectionFrame = Instance.new('Frame')
+    sectionFrame.Name = titleText .. 'Section'
+    sectionFrame.BackgroundTransparency = 1
+    sectionFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
+    sectionFrame.Size = UDim2.new(1, 0, 0, sectionHeight)
+    sectionFrame.Parent = contentFrame
+
+    local label = Instance.new('TextLabel')
+    label.Name = 'Label'
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Font = Enum.Font.Gotham
+    label.Text = titleText
+    label.TextColor3 = colors.subtext
+    label.TextSize = textSize * 0.9
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sectionFrame
+
+    currentYPosition = currentYPosition + sectionHeight + elementPadding
+    UpdateFrameSize()
+    return sectionFrame
+end
+
+function CreateButton(buttonName, callback)
+    local buttonHeight = 28 * scaleFactor
+    local button = Instance.new('TextButton')
+    button.Name = buttonName
+    button.BackgroundColor3 = colors.button
+    button.BorderSizePixel = 0
+    button.Position = UDim2.new(0, 0, 0, currentYPosition)
+    button.Size = UDim2.new(1, 0, 0, buttonHeight)
+    button.Font = Enum.Font.GothamSemibold
+    button.Text = buttonName
+    button.TextColor3 = colors.text
+    button.TextSize = textSize
+    button.Parent = contentFrame
+
+    local buttonCorner = Instance.new('UICorner')
+    buttonCorner.CornerRadius = UDim.new(0, 4)
+    buttonCorner.Parent = button
+
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = colors.buttonHover
+    end)
+
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = colors.button
+    end)
+
+    button.MouseButton1Click:Connect(function()
+        callback(playerInput.Text)
+    end)
+
+    currentYPosition = currentYPosition + buttonHeight + elementPadding
+    UpdateFrameSize()
+    return button
+end
+
+function CreateToggle(toggleName, defaultState, callback)
+    local toggleHeight = 26 * scaleFactor
+    local toggleFrame = Instance.new('Frame')
+    toggleFrame.Name = toggleName .. 'Toggle'
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
+    toggleFrame.Size = UDim2.new(1, 0, 0, toggleHeight)
+    toggleFrame.Parent = contentFrame
+
+    local label = Instance.new('TextLabel')
+    label.Name = 'Label'
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Font = Enum.Font.Gotham
+    label.Text = toggleName
+    label.TextColor3 = colors.text
+    label.TextSize = textSize
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = toggleFrame
+
+    local toggleButton = Instance.new('TextButton')
+    toggleButton.Name = 'ToggleButton'
+    toggleButton.AnchorPoint = Vector2.new(1, 0.5)
+    toggleButton.BackgroundColor3 = defaultState and colors.toggleOn or colors.toggleOff
+    toggleButton.BorderSizePixel = 0
+    toggleButton.Position = UDim2.new(1, 0, 0.5, 0)
+    toggleButton.Size = UDim2.new(0, 45 * scaleFactor, 0, 22 * scaleFactor)
+    toggleButton.Font = Enum.Font.Gotham
+    toggleButton.Text = defaultState and 'ON' or 'OFF'
+    toggleButton.TextColor3 = colors.text
+    toggleButton.TextSize = textSize * 0.9
+    toggleButton.Parent = toggleFrame
+
+    local toggleCorner = Instance.new('UICorner')
+    toggleCorner.CornerRadius = UDim.new(0, 11 * scaleFactor)
+    toggleCorner.Parent = toggleButton
+
+    toggleButton.MouseButton1Click:Connect(function()
+        local newState = not (toggleButton.Text == 'ON')
+        toggleButton.Text = newState and 'ON' or 'OFF'
+        toggleButton.BackgroundColor3 = newState and colors.toggleOn or colors.toggleOff
+        callback(newState, playerInput.Text)
+    end)
+
+    currentYPosition = currentYPosition + toggleHeight + elementPadding
+    UpdateFrameSize()
+    return toggleFrame
+end
+
+function CreateLabel(labelText)
+    local labelHeight = 16 * scaleFactor
+    local label = Instance.new('TextLabel')
+    label.Name = labelText .. 'Label'
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 0, 0, currentYPosition)
+    label.Size = UDim2.new(1, 0, 0, labelHeight)
+    label.Font = Enum.Font.Gotham
+    label.Text = labelText
+    label.TextColor3 = colors.text
+    label.TextSize = textSize * 0.9
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = contentFrame
+
+    currentYPosition = currentYPosition + labelHeight + elementPadding
+    UpdateFrameSize()
+    return label
+end
+
+-- Draggable window functionality
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService('UserInputService').InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Create GUI elements
+CreateSection('Client Only')
+CreateButton('Hide Username', function()
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChild('Head') then
+        local overhead = player.Character.Head:FindFirstChild('Overhead')
+        if overhead then
+            overhead:Destroy()
+        end
+    end
+end)
+
+CreateSection('Toggle Features')
+
+-- TP Collect
+CreateToggle('TP Collect', false, function(state)
+    tpCollectActive = state
+    local player = game.Players.LocalPlayer
+    local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+
+    if not tpCollectActive then return end
+
+    if tpCollectLoop then
+        tpCollectLoop = nil
+    end
+
+    tpCollectLoop = coroutine.create(function()
+        while tpCollectActive do
+            if not player.Character or not player.Character:FindFirstChild('HumanoidRootPart') then
+                break
+            end
+
+            hrp = player.Character.HumanoidRootPart
+
+            local chests = game.Workspace.chests:GetChildren()
+            for _, chest in ipairs(chests) do
+                if not tpCollectActive then break end
+                if chest:IsA('BasePart') and chest:FindFirstChild('ProximityPrompt') then
+                    hrp.CFrame = chest.CFrame + Vector3.new(0, 2, 0)
+                    task.wait(0.15)
+                    fireproximityprompt(chest.ProximityPrompt)
+                    task.wait(0.1)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+    coroutine.resume(tpCollectLoop)
+end)
+
+-- Auto Collect
+CreateToggle('Auto Collect', false, function(state)
+    autocollectActive = state
+    local player = game.Players.LocalPlayer
+    local hrp = player.Character and player.Character:FindFirstChild('HumanoidRootPart')
+
+    if autocollectLoop then
+        autocollectLoop:Disconnect()
+        autocollectLoop = nil
+    end
+
+    if autocollectActive then
+        autocollectLoop = game:GetService('RunService').Heartbeat:Connect(function()
+            if not autocollectActive then return end
+            if not player.Character or not player.Character:FindFirstChild('HumanoidRootPart') then
+                return
+            end
+            hrp = player.Character.HumanoidRootPart
+
+            for _, chest in pairs(game.Workspace.chests:GetChildren()) do
+                if chest:IsA('BasePart') and chest:FindFirstChild('ProximityPrompt') then
+                    local distance = (chest.Position - hrp.Position).Magnitude
+                    if distance < 22 then
+                        fireproximityprompt(chest.ProximityPrompt)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- Auto Equip
+CreateToggle('Auto Equip', false, function(state, inputText)
+    autoBankEquipActive = state
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local inventory = player:FindFirstChild('Backpack')
+    if not inventory then return end
+
+    local function equipNext()
+        if not autoBankEquipActive then return end
+        character = player.Character or player.CharacterAdded:Wait()
+        local tool = character:FindFirstChildOfClass('Tool')
+        if tool then return end
+        
+        for _, item in pairs(inventory:GetChildren()) do
+            if item:IsA('Tool') and item.Name:lower() == inputText:lower() then
+                item.Parent = character
+                break
+            end
+        end
+    end
+
+    if autoBankEquipLoop then
+        autoBankEquipLoop:Disconnect()
+        autoBankEquipLoop = nil
+    end
+
+    if autoBankEquipActive then
+        autoBankEquipLoop = character.ChildRemoved:Connect(function(child)
+            if not autoBankEquipActive then return end
+            if child:IsA('Tool') and child.Name:lower() == inputText:lower() then
+                task.wait(0.2)
+                equipNext()
+            end
+        end)
+        equipNext()
+    end
+end)
+
+-- Instant Kill
+CreateToggle('Instant Kill', false, function(state)
+    killAllActive = state
+    
+    if state then
+        pcall(function()
+            sethiddenproperty(player, "SimulationRadius", 112412400000)
+            sethiddenproperty(player, "MaxSimulationRadius", 112412400000)
+        end)
+        
+        killAllLoop = coroutine.create(function()
+            while killAllActive do
+                for _, d in pairs(workspace:GetDescendants()) do
+                    if d:IsA("Humanoid") and d.Parent and d.Parent.Name ~= player.Name then
+                        d.Health = 0
+                    end
+                end
+                task.wait(0.5)
+            end
+        end)
+        coroutine.resume(killAllLoop)
+    else
+        if killAllLoop then
+            coroutine.close(killAllLoop)
+            killAllLoop = nil
+        end
+        
+        pcall(function()
+            if originalSimulationRadius then
+                sethiddenproperty(player, "SimulationRadius", originalSimulationRadius)
+            end
+            if originalMaxSimulationRadius then
+                sethiddenproperty(player, "MaxSimulationRadius", originalMaxSimulationRadius)
+            end
+        end)
+    end
+end)
+
+-- Information section
+CreateSection('Info')
+CreateLabel('Status: Ready')
+CreateLabel('Players: ' .. #Players:GetPlayers())
+
+-- Cleanup
+gui.Destroying:Connect(function()
+    pcall(function()
+        if originalSimulationRadius then
+            sethiddenproperty(player, "SimulationRadius", originalSimulationRadius)
+        end
+        if originalMaxSimulationRadius then
+            sethiddenproperty(player, "MaxSimulationRadius", originalMaxSimulationRadius)
+        end
+    end)
+    
+    if tpCollectLoop then coroutine.close(tpCollectLoop) end
+    if autocollectLoop then autocollectLoop:Disconnect() end
+    if autoBankEquipLoop then autoBankEquipLoop:Disconnect() end
+    if killAllLoop then coroutine.close(killAllLoop) end
+end)
+
+-- Mobile-specific adjustments
+if isMobile then
+    -- Make GUI draggable on mobile with touch input
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+        end
+    end)
+
+    titleBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
