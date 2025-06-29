@@ -1,0 +1,156 @@
+local HEIGHT_THRESHOLD = 200
+
+local player = game.Players.LocalPlayer
+local hrp
+
+-- Update HRP after reset
+local function updateHRP()
+    player.CharacterAdded:Connect(function(char)
+        local newHRP = char:WaitForChild("HumanoidRootPart")
+        hrp = newHRP
+    end)
+
+    if player.Character then
+        hrp = player.Character:WaitForChild("HumanoidRootPart")
+    end
+end
+
+updateHRP()
+
+-- Kill All function
+local function killAllNPCs()
+    sethiddenproperty(player, "SimulationRadius", 112412400000)
+    sethiddenproperty(player, "MaxSimulationRadius", 112412400000)
+    for _, d in pairs(workspace:GetDescendants()) do
+        if d.ClassName == 'Humanoid' and d.Parent.Name ~= player.Name then
+            d.Health = 0
+        end
+    end
+end
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "ChestTPGui"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 220, 0, 140)  -- Increased height for new button
+frame.Position = UDim2.new(0.05, 0, 0.4, 0)
+frame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "Chest Teleporter"
+title.TextColor3 = Color3.fromRGB(220, 220, 220)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+
+local chestIndicator = Instance.new("TextLabel", frame)
+chestIndicator.Size = UDim2.new(1, -20, 0, 20)
+chestIndicator.Position = UDim2.new(0, 10, 0, 35)
+chestIndicator.BackgroundTransparency = 1
+chestIndicator.TextColor3 = Color3.fromRGB(180, 180, 180)
+chestIndicator.Font = Enum.Font.Gotham
+chestIndicator.TextSize = 16
+chestIndicator.TextXAlignment = Enum.TextXAlignment.Left
+chestIndicator.Text = "Chests detected: 0"
+
+local lastChestLabel = Instance.new("TextLabel", frame)
+lastChestLabel.Size = UDim2.new(1, -20, 0, 20)
+lastChestLabel.Position = UDim2.new(0, 10, 0, 60)
+lastChestLabel.BackgroundTransparency = 1
+lastChestLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+lastChestLabel.Font = Enum.Font.Gotham
+lastChestLabel.TextSize = 14
+lastChestLabel.TextXAlignment = Enum.TextXAlignment.Left
+lastChestLabel.Text = "Last chest: None"
+
+-- New Kill All button
+local killAllBtn = Instance.new("TextButton", frame)
+killAllBtn.Size = UDim2.new(1, -20, 0, 30)
+killAllBtn.Position = UDim2.new(0, 10, 0, 85)  -- Positioned above toggle
+killAllBtn.BackgroundColor3 = Color3.fromRGB(180, 70, 70)  -- Red color
+killAllBtn.TextColor3 = Color3.new(1, 1, 1)
+killAllBtn.Font = Enum.Font.GothamBold
+killAllBtn.TextScaled = true
+killAllBtn.Text = "KILL ALL"
+killAllBtn.BorderSizePixel = 0
+Instance.new("UICorner", killAllBtn).CornerRadius = UDim.new(0, 10)
+
+-- Original toggle button (moved down)
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(1, -20, 0, 30)
+toggle.Position = UDim2.new(0, 10, 0, 120)  -- Moved down from 85 to 120
+toggle.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+toggle.TextColor3 = Color3.new(1, 1, 1)
+toggle.Font = Enum.Font.GothamBold
+toggle.TextScaled = true
+toggle.Text = "Chest Farm: OFF"
+toggle.BorderSizePixel = 0
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 10)
+
+local toggled = false
+
+local function updateChestCount()
+    local folder = workspace:FindFirstChild("chests")
+    chestIndicator.Text = folder and ("Chests detected: " .. #folder:GetChildren()) or "Chests detected: 0"
+end
+
+-- Connect Kill All button
+killAllBtn.MouseButton1Click:Connect(function()
+    killAllNPCs()
+end)
+
+toggle.MouseButton1Click:Connect(function()
+    toggled = not toggled
+    toggle.Text = toggled and "Chest Farm: ON" or "Chest Farm: OFF"
+
+    if toggled then
+        while toggled do
+            updateChestCount()
+            local chests = workspace:FindFirstChild("chests")
+            if not chests then task.wait(1) continue end
+
+            for _, chest in ipairs(chests:GetChildren()) do
+                if not toggled then break end
+
+                lastChestLabel.Text = "Last chest: " .. chest.Name
+
+                local chestPart = chest:IsA("Model") and chest.PrimaryPart or chest:IsA("BasePart") and chest or nil
+                if chestPart then
+                    if chestPart.Position.Y > HEIGHT_THRESHOLD then
+                        lastChestLabel.Text = "Deleted: " .. chest.Name
+                        chest:Destroy()
+                    else
+                        if hrp then
+                            hrp.CFrame = chestPart.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.2)
+
+                            local prompt = chest:FindFirstChildOfClass("ProximityPrompt") or chest:FindFirstDescendantWhichIsA("ProximityPrompt")
+                            if prompt then
+                                fireproximityprompt(prompt, 1)
+                                task.wait(0.03)
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(0.3)
+        end
+    else
+        lastChestLabel.Text = "Last chest: None"
+    end
+end)
+
+-- Constantly update chest count
+task.spawn(function()
+    while true do
+        updateChestCount()
+        task.wait(0.1)
+    end
+end)
