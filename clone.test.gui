@@ -1,0 +1,193 @@
+-- Safe Tool Manager UI
+-- Designed for developer use in controlled environments
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Backpack = LocalPlayer:WaitForChild("Backpack")
+
+-- Create the UI
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local TitleLabel = Instance.new("TextLabel")
+local ToolContainer = Instance.new("ScrollingFrame")
+local ToolListLayout = Instance.new("UIListLayout")
+local UpdateButton = Instance.new("TextButton")
+local CloseButton = Instance.new("TextButton")
+
+ScreenGui.Name = "DevToolManager"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
+MainFrame.Size = UDim2.new(0, 300, 0, 350)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleLabel.BorderSizePixel = 0
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "Developer Tool Manager"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 14
+
+ToolContainer.Name = "ToolContainer"
+ToolContainer.Parent = MainFrame
+ToolContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+ToolContainer.BorderSizePixel = 0
+ToolContainer.Position = UDim2.new(0.05, 0, 0.12, 0)
+ToolContainer.Size = UDim2.new(0.9, 0, 0.7, 0)
+ToolContainer.ScrollBarThickness = 6
+ToolContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+ToolListLayout.Name = "ToolListLayout"
+ToolListLayout.Parent = ToolContainer
+ToolListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ToolListLayout.Padding = UDim.new(0, 5)
+
+UpdateButton.Name = "UpdateButton"
+UpdateButton.Parent = MainFrame
+UpdateButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+UpdateButton.BorderSizePixel = 0
+UpdateButton.Position = UDim2.new(0.05, 0, 0.85, 0)
+UpdateButton.Size = UDim2.new(0.425, 0, 0.1, 0)
+UpdateButton.Font = Enum.Font.Gotham
+UpdateButton.Text = "Refresh Tools"
+UpdateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+UpdateButton.TextSize = 14
+
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = MainFrame
+CloseButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+CloseButton.BorderSizePixel = 0
+CloseButton.Position = UDim2.new(0.525, 0, 0.85, 0)
+CloseButton.Size = UDim2.new(0.425, 0, 0.1, 0)
+CloseButton.Font = Enum.Font.Gotham
+CloseButton.Text = "Close"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 14
+
+-- Create tool button template
+local ToolButtonTemplate = Instance.new("TextButton")
+ToolButtonTemplate.Name = "ToolButtonTemplate"
+ToolButtonTemplate.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ToolButtonTemplate.BorderSizePixel = 0
+ToolButtonTemplate.Size = UDim2.new(0.95, 0, 0, 40)
+ToolButtonTemplate.Visible = false
+ToolButtonTemplate.Font = Enum.Font.Gotham
+ToolButtonTemplate.TextColor3 = Color3.fromRGB(220, 220, 220)
+ToolButtonTemplate.TextSize = 14
+ToolButtonTemplate.TextWrapped = true
+ToolButtonTemplate.Parent = ToolContainer
+
+-- Function to safely clone tools
+local function cloneToolToBackpack(tool)
+	-- Validate tool exists
+	if not tool or not tool:IsA("Tool") then
+		warn("Invalid tool object")
+		return false
+	end
+	
+	-- Create a clean clone
+	local clone = tool:Clone()
+	
+	-- Clear any potentially sensitive data
+	clone:ClearAllChildren()
+	
+	-- Add a marker to identify developer-created tools
+	local creatorTag = Instance.new("StringValue")
+	creatorTag.Name = "DevToolManagerCreated"
+	creatorTag.Value = "Created by Tool Manager UI"
+	creatorTag.Parent = clone
+	
+	-- Parent to backpack
+	clone.Parent = Backpack
+	
+	return true
+end
+
+-- Function to populate tool list
+local function updateToolList()
+	-- Clear existing buttons (except template)
+	for _, child in ipairs(ToolContainer:GetChildren()) do
+		if child:IsA("TextButton") and child.Name ~= "ToolButtonTemplate" then
+			child:Destroy()
+		end
+	end
+	
+	-- Find all tools in the game
+	local allTools = {}
+	
+	-- Search in specific safe locations only
+	local safeLocations = {
+		game:GetService("ServerStorage"),
+		game:GetService("ReplicatedStorage"),
+		game:GetService("StarterPack"),
+		game:GetService("StarterGui"),
+		workspace
+	}
+	
+	for _, location in ipairs(safeLocations) do
+		for _, tool in ipairs(location:GetDescendants()) do
+			if tool:IsA("Tool") then
+				table.insert(allTools, tool)
+			end
+		end
+	end
+	
+	-- Create buttons for each tool
+	for _, tool in ipairs(allTools) do
+		local button = ToolButtonTemplate:Clone()
+		button.Name = "ToolButton_" .. tool.Name
+		button.Text = tool.Name
+		button.Visible = true
+		button.Parent = ToolContainer
+		
+		button.MouseButton1Click:Connect(function()
+			local success = cloneToolToBackpack(tool)
+			if success then
+				button.TextColor3 = Color3.fromRGB(100, 255, 100)
+				task.wait(0.5)
+				button.TextColor3 = Color3.fromRGB(220, 220, 220)
+			else
+				button.TextColor3 = Color3.fromRGB(255, 100, 100)
+				task.wait(1)
+				button.TextColor3 = Color3.fromRGB(220, 220, 220)
+			end
+		end)
+	end
+	
+	-- Update container size
+	ToolContainer.CanvasSize = UDim2.new(0, 0, 0, ToolListLayout.AbsoluteContentSize.Y)
+end
+
+-- Set up button events
+UpdateButton.MouseButton1Click:Connect(updateToolList)
+CloseButton.MouseButton1Click:Connect(function()
+	ScreenGui:Destroy()
+end)
+
+-- Initial update
+updateToolList()
+
+-- Add subtle shadow effect
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.8
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.BackgroundTransparency = 1
+shadow.Position = UDim2.new(0, -10, 0, -10)
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.ZIndex = -1
+shadow.Parent = MainFrame
+
+print("Developer Tool Manager loaded successfully")
