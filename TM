@@ -41,7 +41,7 @@ iconButton.Name = 'IconButton'
 iconButton.AnchorPoint = Vector2.new(0.5, 0.5)
 iconButton.BackgroundColor3 = colors.icon
 iconButton.BorderSizePixel = 0
-iconButton.Position = UDim2.new(0, 50, 0, 50)
+iconButton.Position = UDim2.new(0.1, 0, 0.9, 0)  -- Positioned at bottom-left
 iconButton.Size = UDim2.new(0, 50, 0, 50)
 iconButton.Text = "≡"  -- Hamburger icon
 iconButton.TextColor3 = colors.text
@@ -70,7 +70,7 @@ mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.BackgroundColor3 = colors.background
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)  -- Center position
 mainFrame.Size = UDim2.new(0, baseSize, 0, 300) -- Initial height
 mainFrame.Parent = mainGui
 
@@ -323,7 +323,7 @@ function CreateLabel(labelText, warning)
     return label
 end
 
--- ===== DRAGGING SYSTEM FOR MAIN GUI =====
+-- ===== FIXED DRAGGING SYSTEM FOR MAIN GUI =====
 local dragging = false
 local dragStart
 local startPos
@@ -441,6 +441,8 @@ iconButton.MouseButton1Click:Connect(function()
     if mainGui.Enabled then
         iconButton.Text = "×"  -- Change to X when open
         iconButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
+        -- Reset main GUI position to center
+        mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     else
         iconButton.Text = "≡"  -- Change back to hamburger
         iconButton.BackgroundColor3 = colors.icon
@@ -583,12 +585,12 @@ CreateToggle('Auto Equip For Bank', false, function(state, inputText)
     -- Cleanup previous connection
     if autoBankEquipLoop then
         autoBankEquipLoop:Disconnect()
-        autoBankEquipLoop = nil
+       autoBankEquipLoop = nil
     end
 
     if autoBankEquipActive then
         -- Listen for when a tool is removed (banked)
-        autoBankEquipLoop = character. ChildRemoved:Connect(function(child)
+        autoBankEquipLoop = character.ChildRemoved:Connect(function(child)
             if not autoBankEquipActive then
                 return
             end
