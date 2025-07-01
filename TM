@@ -11,15 +11,6 @@ local baseSize = math.min(350, screenSize.X * 0.9)  -- Max 350px or 90% of scree
 local fontSizeMultiplier = isMobile and 1.1 or 1
 local paddingMultiplier = isMobile and 0.8 or 1
 
--- Main GUI creation
-local gui = Instance.new('ScreenGui')
-gui.Name = 'ModularGUI'
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 10
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
-
 -- Color scheme
 local colors = {
     background = Color3.fromRGB(30, 30, 40),
@@ -32,7 +23,45 @@ local colors = {
     toggleOn = Color3.fromRGB(0, 170, 127),
     input = Color3.fromRGB(50, 50, 60),
     warning = Color3.fromRGB(255, 50, 50),
+    icon = Color3.fromRGB(70, 130, 180),
 }
+
+-- ===== ICON GUI =====
+local iconGui = Instance.new('ScreenGui')
+iconGui.Name = 'ModularGUI_Icon'
+iconGui.ResetOnSpawn = false
+iconGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+iconGui.DisplayOrder = 100  -- Always on top
+iconGui.IgnoreGuiInset = true
+iconGui.Parent = playerGui
+
+-- Icon button
+local iconButton = Instance.new('TextButton')
+iconButton.Name = 'IconButton'
+iconButton.AnchorPoint = Vector2.new(0.5, 0.5)
+iconButton.BackgroundColor3 = colors.icon
+iconButton.BorderSizePixel = 0
+iconButton.Position = UDim2.new(0, 50, 0, 50)
+iconButton.Size = UDim2.new(0, 50, 0, 50)
+iconButton.Text = "≡"  -- Hamburger icon
+iconButton.TextColor3 = colors.text
+iconButton.TextSize = 24
+iconButton.Parent = iconGui
+
+-- Round icon
+local iconCorner = Instance.new('UICorner')
+iconCorner.CornerRadius = UDim.new(1, 0)  -- Perfect circle
+iconCorner.Parent = iconButton
+
+-- ===== MAIN GUI =====
+local mainGui = Instance.new('ScreenGui')
+mainGui.Name = 'ModularGUI_Main'
+mainGui.ResetOnSpawn = false
+mainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+mainGui.DisplayOrder = 10
+mainGui.IgnoreGuiInset = true
+mainGui.Enabled = false  -- Start hidden
+mainGui.Parent = playerGui
 
 -- Main container
 local mainFrame = Instance.new('Frame')
@@ -43,7 +72,7 @@ mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainFrame.Size = UDim2.new(0, baseSize, 0, 300) -- Initial height
-mainFrame.Parent = gui
+mainFrame.Parent = mainGui
 
 -- Round corners
 local corner = Instance.new('UICorner')
@@ -86,10 +115,6 @@ closeButton.Text = 'X'
 closeButton.TextColor3 = colors.text
 closeButton.TextSize = 14 * fontSizeMultiplier
 closeButton.Parent = titleBar
-
-closeButton.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
 
 -- Content frame
 local contentFrame = Instance.new('Frame')
@@ -298,8 +323,7 @@ function CreateLabel(labelText, warning)
     return label
 end
 
--- ===== FIXED DRAGGING SYSTEM =====
--- Simplified and fixed dragging logic
+-- ===== DRAGGING SYSTEM FOR MAIN GUI =====
 local dragging = false
 local dragStart
 local startPos
@@ -343,12 +367,90 @@ UserInputService.InputChanged:Connect(function(input)
         local maxY = screenHeight - frameSize.Y / 2
         
         -- Get current position in pixels
-        local posX = math.clamp(newPos.X.Offset, -screenWidth/2 + minX, screenWidth/2 - minX)
-        local posY = math.clamp(newPos.Y.Offset, -screenHeight/2 + minY, screenHeight/2 - minY)
+        local posX = newPos.X.Offset
+        local posY = newPos.Y.Offset
+        
+        -- Clamp position to screen boundaries
+        posX = math.clamp(posX, minX, maxX)
+        posY = math.clamp(posY, minY, maxY)
         
         -- Update position
         mainFrame.Position = UDim2.new(0.5, posX, 0.5, posY)
     end
+end)
+
+-- ===== DRAGGING SYSTEM FOR ICON =====
+local iconDragging = false
+local iconDragStart
+local iconStartPos
+
+iconButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        iconDragging = true
+        iconDragStart = input.Position
+        iconStartPos = iconButton.Position
+    end
+end)
+
+iconButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        iconDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
+                    input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - iconDragStart
+        local newPos = UDim2.new(
+            iconStartPos.X.Scale,
+            iconStartPos.X.Offset + delta.X,
+            iconStartPos.Y.Scale,
+            iconStartPos.Y.Offset + delta.Y
+        )
+        
+        -- Keep within screen bounds
+        local screenWidth = workspace.CurrentCamera.ViewportSize.X
+        local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+        local iconSize = iconButton.AbsoluteSize
+        
+        -- Calculate boundaries
+        local minX = iconSize.X / 2
+        local maxX = screenWidth - iconSize.X / 2
+        local minY = iconSize.Y / 2
+        local maxY = screenHeight - iconSize.Y / 2
+        
+        -- Get current position in pixels
+        local posX = newPos.X.Offset
+        local posY = newPos.Y.Offset
+        
+        -- Clamp position to screen boundaries
+        posX = math.clamp(posX, minX, maxX)
+        posY = math.clamp(posY, minY, maxY)
+        
+        -- Update position
+        iconButton.Position = UDim2.new(0, posX, 0, posY)
+    end
+end)
+
+-- ===== TOGGLE FUNCTIONALITY =====
+iconButton.MouseButton1Click:Connect(function()
+    mainGui.Enabled = not mainGui.Enabled
+    if mainGui.Enabled then
+        iconButton.Text = "×"  -- Change to X when open
+        iconButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
+    else
+        iconButton.Text = "≡"  -- Change back to hamburger
+        iconButton.BackgroundColor3 = colors.icon
+    end
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    mainGui.Enabled = false
+    iconButton.Text = "≡"
+    iconButton.BackgroundColor3 = colors.icon
 end)
 
 -- ===== MAIN CONTENT =====
@@ -486,7 +588,7 @@ CreateToggle('Auto Equip For Bank', false, function(state, inputText)
 
     if autoBankEquipActive then
         -- Listen for when a tool is removed (banked)
-        autoBankEquipLoop = character.ChildRemoved:Connect(function(child)
+        autoBankEquipLoop = character. ChildRemoved:Connect(function(child)
             if not autoBankEquipActive then
                 return
             end
