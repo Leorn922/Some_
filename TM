@@ -343,12 +343,8 @@ UserInputService.InputChanged:Connect(function(input)
         local maxY = screenHeight - frameSize.Y / 2
         
         -- Get current position in pixels
-        local posX = newPos.X.Offset
-        local posY = newPos.Y.Offset
-        
-        -- Clamp position to screen boundaries
-        posX = math.clamp(posX, minX, maxX)
-        posY = math.clamp(posY, minY, maxY)
+        local posX = math.clamp(newPos.X.Offset, -screenWidth/2 + minX, screenWidth/2 - minX)
+        local posY = math.clamp(newPos.Y.Offset, -screenHeight/2 + minY, screenHeight/2 - minY)
         
         -- Update position
         mainFrame.Position = UDim2.new(0.5, posX, 0.5, posY)
