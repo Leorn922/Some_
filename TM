@@ -2,457 +2,6 @@ local Players = game:GetService('Players')
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild('PlayerGui')
 local UserInputService = game:GetService("UserInputService")
-
--- Mobile detection and scaling variables
-local isMobile = UserInputService.TouchEnabled
-local guiScale = isMobile and 1.2 or 1
-local baseSize = isMobile and 350 or 300
-local fontSizeMultiplier = isMobile and 1.2 or 1
-
--- Main GUI creation
-local gui = Instance.new('ScreenGui')
-gui.Name = 'ModularGUI'
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.DisplayOrder = 10
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
-
--- Color scheme
-local colors = {
-    background = Color3.fromRGB(30, 30, 40),
-    header = Color3.fromRGB(40, 40, 50),
-    text = Color3.fromRGB(255, 255, 255),
-    subtext = Color3.fromRGB(200, 200, 200),
-    button = Color3.fromRGB(70, 70, 80),
-    buttonHover = Color3.fromRGB(90, 90, 100),
-    toggleOff = Color3.fromRGB(60, 60, 70),
-    toggleOn = Color3.fromRGB(0, 170, 127),
-    input = Color3.fromRGB(50, 50, 60),
-    warning = Color3.fromRGB(255, 50, 50),
-}
-
--- Main container
-local mainFrame = Instance.new('Frame')
-mainFrame.Name = 'MainFrame'
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.BackgroundColor3 = colors.background
-mainFrame.BackgroundTransparency = 0.2
-mainFrame.BorderSizePixel = 0
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.Size = UDim2.new(0, baseSize, 0, 0) -- Height will auto-adjust
-mainFrame.Parent = gui
-
--- Round corners
-local corner = Instance.new('UICorner')
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = mainFrame
-
--- Shadow effect
-local shadow = Instance.new('ImageLabel')
-shadow.Name = 'Shadow'
-shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-shadow.BackgroundTransparency = 1
-shadow.BorderSizePixel = 0
-shadow.Position = UDim2.new(0.5, 0, 0.5, 4)
-shadow.Size = UDim2.new(1, 10, 1, 10)
-shadow.Image = 'rbxassetid://1316045217'
-shadow.ImageColor3 = Color3.new(0, 0, 0)
-shadow.ImageTransparency = 0.8
-shadow.ScaleType = Enum.ScaleType.Slice
-shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-shadow.Parent = mainFrame
-shadow.ZIndex = -1
-
--- Title bar
-local titleBar = Instance.new('Frame')
-titleBar.Name = 'TitleBar'
-titleBar.BackgroundColor3 = colors.header
-titleBar.BorderSizePixel = 0
-titleBar.Size = UDim2.new(1, 0, 0, 30 * guiScale)
-titleBar.Parent = mainFrame
-
-local titleCorner = Instance.new('UICorner')
-titleCorner.CornerRadius = UDim.new(0, 8)
-titleCorner.Parent = titleBar
-
-local title = Instance.new('TextLabel')
-title.Name = 'Title'
-title.BackgroundTransparency = 1
-title.Position = UDim2.new(0, 10, 0, 0)
-title.Size = UDim2.new(1, -40, 1, 0)
-title.Font = Enum.Font.GothamSemibold
-title.Text = 'BasicIsBetter! SUBSCRIBE!'
-title.TextColor3 = colors.text
-title.TextSize = 14 * fontSizeMultiplier
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = titleBar
-
--- Close button
-local closeButton = Instance.new('TextButton')
-closeButton.Name = 'CloseButton'
-closeButton.AnchorPoint = Vector2.new(1, 0.5)
-closeButton.BackgroundTransparency = 1
-closeButton.Position = UDim2.new(1, -10, 0.5, 0)
-closeButton.Size = UDim2.new(0, 20 * guiScale, 0, 20 * guiScale)
-closeButton.Font = Enum.Font.GothamBold
-closeButton.Text = 'X'
-closeButton.TextColor3 = colors.text
-closeButton.TextSize = 14 * fontSizeMultiplier
-closeButton.Parent = titleBar
-
-closeButton.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
-
--- Content frame
-local contentFrame = Instance.new('Frame')
-contentFrame.Name = 'ContentFrame'
-contentFrame.BackgroundTransparency = 1
-contentFrame.Position = UDim2.new(0, 10, 0, 40 * guiScale)
-contentFrame.Size = UDim2.new(1, -20, 1, -50 * guiScale)
-contentFrame.Parent = mainFrame
-
--- Auto-layout variables
-local currentYPosition = 0
-local elementPadding = 5 * guiScale
-local sectionPadding = 15 * guiScale
-
--- Player name input (automatically added)
-local playerInputFrame = Instance.new('Frame')
-playerInputFrame.Name = 'PlayerInputFrame'
-playerInputFrame.BackgroundTransparency = 1
-playerInputFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
-playerInputFrame.Size = UDim2.new(1, 0, 0, 60 * guiScale)
-playerInputFrame.Parent = contentFrame
-
-local playerLabel = Instance.new('TextLabel')
-playerLabel.Name = 'PlayerLabel'
-playerLabel.BackgroundTransparency = 1
-playerLabel.Position = UDim2.new(0, 0, 0, 0)
-playerLabel.Size = UDim2.new(1, 0, 0, 20 * guiScale)
-playerLabel.Font = Enum.Font.Gotham
-playerLabel.Text = 'Item Name (for Auto Equipping Bank Items):'
-playerLabel.TextColor3 = colors.subtext
-playerLabel.TextSize = 12 * fontSizeMultiplier
-playerLabel.TextXAlignment = Enum.TextXAlignment.Left
-playerLabel.Parent = playerInputFrame
-
-local playerInput = Instance.new('TextBox')
-playerInput.Name = 'PlayerInput'
-playerInput.BackgroundColor3 = colors.input
-playerInput.BorderSizePixel = 0
-playerInput.Position = UDim2.new(0, 0, 0, 25 * guiScale)
-playerInput.Size = UDim2.new(1, 0, 0, 30 * guiScale)
-playerInput.Font = Enum.Font.Gotham
-playerInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-playerInput.PlaceholderText = 'Item Name Here.'
-playerInput.Text = ''
-playerInput.TextColor3 = colors.text
-playerInput.TextSize = 14 * fontSizeMultiplier
-playerInput.TextXAlignment = Enum.TextXAlignment.Left
-playerInput.Parent = playerInputFrame
-
-local inputCorner = Instance.new('UICorner')
-inputCorner.CornerRadius = UDim.new(0, 4)
-inputCorner.Parent = playerInput
-
-local inputPadding = Instance.new('UIPadding')
-inputPadding.PaddingLeft = UDim.new(0, 8)
-inputPadding.Parent = playerInput
-
-currentYPosition = currentYPosition + 60 * guiScale + sectionPadding
-
--- Function to update main frame size
-local function UpdateFrameSize()
-    local totalHeight = 40 * guiScale + currentYPosition + 10 * guiScale
-    mainFrame.Size = UDim2.new(0, baseSize, 0, totalHeight)
-end
-
---[[
-    ELEMENT CREATION FUNCTIONS
-]]
-
--- Create a new section label
-function CreateSection(titleText)
-    local sectionFrame = Instance.new('Frame')
-    sectionFrame.Name = titleText .. 'Section'
-    sectionFrame.BackgroundTransparency = 1
-    sectionFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
-    sectionFrame.Size = UDim2.new(1, 0, 0, 20 * guiScale)
-    sectionFrame.Parent = contentFrame
-
-    local label = Instance.new('TextLabel')
-    label.Name = 'Label'
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Font = Enum.Font.Gotham
-    label.Text = titleText
-    label.TextColor3 = colors.subtext
-    label.TextSize = 12 * fontSizeMultiplier
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = sectionFrame
-
-    currentYPosition = currentYPosition + 20 * guiScale + elementPadding
-    UpdateFrameSize()
-
-    return sectionFrame
-end
-
--- Create a new button
-function CreateButton(buttonName, callback)
-    local button = Instance.new('TextButton')
-    button.Name = buttonName
-    button.BackgroundColor3 = colors.button
-    button.BorderSizePixel = 0
-    button.Position = UDim2.new(0, 0, 0, currentYPosition)
-    button.Size = UDim2.new(1, 0, 0, 35 * guiScale)
-    button.Font = Enum.Font.GothamSemibold
-    button.Text = buttonName
-    button.TextColor3 = colors.text
-    button.TextSize = 14 * fontSizeMultiplier
-    button.Parent = contentFrame
-
-    -- Add corner rounding
-    local buttonCorner = Instance.new('UICorner')
-    buttonCorner.CornerRadius = UDim.new(0, 4)
-    buttonCorner.Parent = button
-
-    -- Hover effects
-    button.MouseEnter:Connect(function()
-        button.BackgroundColor3 = colors.buttonHover
-    end)
-
-    button.MouseLeave:Connect(function()
-        button.BackgroundColor3 = colors.button
-    end)
-
-    -- Click handler
-    button.MouseButton1Click:Connect(function()
-        callback(playerInput.Text) -- Pass the player input to the callback
-    end)
-
-    currentYPosition = currentYPosition + 35 * guiScale + elementPadding
-    UpdateFrameSize()
-
-    return button
-end
-
--- Create a new toggle
-function CreateToggle(toggleName, defaultState, callback)
-    local toggleFrame = Instance.new('Frame')
-    toggleFrame.Name = toggleName .. 'Toggle'
-    toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Position = UDim2.new(0, 0, 0, currentYPosition)
-    toggleFrame.Size = UDim2.new(1, 0, 0, 30 * guiScale)
-    toggleFrame.Parent = contentFrame
-
-    local label = Instance.new('TextLabel')
-    label.Name = 'Label'
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 0, 0, 0)
-    label.Size = UDim2.new(0.7, 0, 1, 0)
-    label.Font = Enum.Font.Gotham
-    label.Text = toggleName
-    label.TextColor3 = colors.text
-    label.TextSize = 14 * fontSizeMultiplier
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = toggleFrame
-
-    local toggleButton = Instance.new('TextButton')
-    toggleButton.Name = 'ToggleButton'
-    toggleButton.AnchorPoint = Vector2.new(1, 0.5)
-    toggleButton.BackgroundColor3 = defaultState and colors.toggleOn
-        or colors.toggleOff
-    toggleButton.BorderSizePixel = 0
-    toggleButton.Position = UDim2.new(1, 0, 0.5, 0)
-    toggleButton.Size = UDim2.new(0, 50 * guiScale, 0, 25 * guiScale)
-    toggleButton.Font = Enum.Font.Gotham
-    toggleButton.Text = defaultState and 'ON' or 'OFF'
-    toggleButton.TextColor3 = colors.text
-    toggleButton.TextSize = 12 * fontSizeMultiplier
-    toggleButton.Parent = toggleFrame
-
-    local toggleCorner = Instance.new('UICorner')
-    toggleCorner.CornerRadius = UDim.new(0, 12)
-    toggleCorner.Parent = toggleButton
-
-    toggleButton.MouseButton1Click:Connect(function()
-        local newState = not (toggleButton.Text == 'ON')
-        toggleButton.Text = newState and 'ON' or 'OFF'
-        toggleButton.BackgroundColor3 = newState and colors.toggleOn
-            or colors.toggleOff
-        callback(newState, playerInput.Text) -- Pass state and player input to callback
-    end)
-
-    currentYPosition = currentYPosition + 30 * guiScale + elementPadding
-    UpdateFrameSize()
-
-    return toggleFrame
-end
-
--- Create a label
-function CreateLabel(labelText, warning)
-    local label = Instance.new('TextLabel')
-    label.Name = labelText .. 'Label'
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 0, 0, currentYPosition)
-    label.Size = UDim2.new(1, 0, 0, 20 * guiScale)
-    label.Font = Enum.Font.Gotham
-    label.Text = labelText
-    label.TextColor3 = warning and colors.warning or colors.text
-    label.TextSize = 14 * fontSizeMultiplier
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = contentFrame
-
-    currentYPosition = currentYPosition + 20 * guiScale + elementPadding
-    UpdateFrameSize()
-
-    return label
-end
-
--- Draggable window functionality
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    mainFrame.Position = UDim2.new(
-        startPos.X.Scale,
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale,
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-titleBar.InputBegan:Connect(function(input)
-    if
-        input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch
-    then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainFrame.Position
-
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-titleBar.InputChanged:Connect(function(input)
-    if
-        input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch
-    then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
--- ===== MAIN CONTENT =====
-CreateSection('Toggle Features')
-
-CreateToggle('TPCollect', false, function(state)
-    tpCollectActive = state
-    local player = game.Players.LocalPlayer
-    local hrp = player.Character
-        and player.Character:FindFirstChild('HumanoidRootPart')
-
-    if not tpCollectActive then
-        return -- stop here if turned off
-    end
-
-    if tpCollectLoop then
-        tpCollectLoop = nil -- Reset old coroutine
-    end
-
-    tpCollectLoop = coroutine.create(function()
-        while tpCollectActive do
-            if
-                not player.Character
-                or not player.Character:FindFirstChild('HumanoidRootPart')
-            then
-                break
-            end
-
-            hrp = player.Character.HumanoidRootPart
-            local chests = game.Workspace.ChestFolderThing:GetChildren()
-
-            for _, chest in ipairs(chests) do
-                if not tpCollectActive then
-                    break
-                end
-
-                if
-                    chest:IsA('Model')
-                    and chest:FindFirstChild('Handle')
-                    and chest.Handle:FindFirstChild('ProximityPrompt')
-                then
-                    local chestPos = chest.Handle.Position
-                    local distance = (chestPos - hrp.Position).Magnitude
-
-                    if distance <= 666 then
-                        hrp.CFrame = CFrame.new(chestPos + Vector3.new(0, 2, 0))
-                        task.wait(0.15)
-                        fireproximityprompt(chest.Handle.ProximityPrompt)
-                        task.wait(0.1) -- 2 second cooldown between teleports
-                    end
-                end
-            end
-
-            task.wait(0.5)
-        end
-    end)
-    coroutine.resume(tpCollectLoop)
-end)
-
-CreateToggle('Auto Collect Nearby Chests', false, function(state)
-    autocollectActive = state
-    local player = game.Players.LocalPlayer
-    local hrp = player.Character
-        and player.Character:FindFirstChild('HumanoidRootPart')
-
-    if autocollectLoop then
-        autocollectLoop:Disconnect()
-        autocollectLoop = nil
-    end
-
-    if autocollectActive then
-        autocollectLoop = game
-            :GetService('RunService').Heartbeat
-            :Connect(function()
-                if not autocollectActive then
-                    return
-                end
-
-                if
-                    not player.Character
-                    or not player.Character:FindFirstChild('HumanoidRootPart')
-                then
-                    return
-                end
-                hrp = player.Character.HumanoidRootPart
-
-                for _, chest in pairs(game.Workspace.ChestFolderThing:GetChildren()) do
-                    if
-                        chest:IsA('Model')
-                        and chest
-                            :FindFirstChild('Handle')
-                            :FindFirstChild('ProximityPrompt')
-local Players = game:GetService('Players')
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild('PlayerGui')
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 -- Mobile detection and responsive design
@@ -493,7 +42,7 @@ mainFrame.BackgroundColor3 = colors.background
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.BorderSizePixel = 0
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.Size = UDim2.new(0, baseSize, 0, 0) -- Height will auto-adjust
+mainFrame.Size = UDim2.new(0, baseSize, 0, 300) -- Initial height
 mainFrame.Parent = gui
 
 -- Round corners
@@ -542,31 +91,24 @@ closeButton.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- Content scrolling frame
-local contentScroller = Instance.new('ScrollingFrame')
-contentScroller.Name = 'ContentScroller'
-contentScroller.BackgroundTransparency = 1
-contentScroller.BorderSizePixel = 0
-contentScroller.Position = UDim2.new(0, 10, 0, 35 * paddingMultiplier)
-contentScroller.Size = UDim2.new(1, -20, 1, -40 * paddingMultiplier)
-contentScroller.AutomaticCanvasSize = Enum.AutomaticSize.Y
-contentScroller.ScrollBarThickness = 6
-contentScroller.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
-contentScroller.CanvasSize = UDim2.new(0, 0, 0, 0)
-contentScroller.Parent = mainFrame
-
 -- Content frame
 local contentFrame = Instance.new('Frame')
 contentFrame.Name = 'ContentFrame'
 contentFrame.BackgroundTransparency = 1
-contentFrame.Size = UDim2.new(1, 0, 0, 0)
-contentFrame.AutomaticSize = Enum.AutomaticSize.Y
-contentFrame.Parent = contentScroller
+contentFrame.Position = UDim2.new(0, 10, 0, 40 * paddingMultiplier)
+contentFrame.Size = UDim2.new(1, -20, 1, -50 * paddingMultiplier)
+contentFrame.Parent = mainFrame
 
 -- Auto-layout variables
 local currentYPosition = 0
 local elementPadding = 5 * paddingMultiplier
 local sectionPadding = 10 * paddingMultiplier
+
+-- Function to update main frame size
+local function UpdateFrameSize()
+    local totalHeight = 40 * paddingMultiplier + currentYPosition + 10 * paddingMultiplier
+    mainFrame.Size = UDim2.new(0, baseSize, 0, totalHeight)
+end
 
 -- Player name input (automatically added)
 local playerInputFrame = Instance.new('Frame')
@@ -612,6 +154,7 @@ inputPadding.PaddingLeft = UDim.new(0, 8)
 inputPadding.Parent = playerInput
 
 currentYPosition = currentYPosition + 50 * paddingMultiplier + sectionPadding
+UpdateFrameSize()
 
 --[[
     ELEMENT CREATION FUNCTIONS
@@ -638,6 +181,7 @@ function CreateSection(titleText)
     label.Parent = sectionFrame
 
     currentYPosition = currentYPosition + 18 * paddingMultiplier + elementPadding
+    UpdateFrameSize()
 
     return sectionFrame
 end
@@ -676,6 +220,7 @@ function CreateButton(buttonName, callback)
     end)
 
     currentYPosition = currentYPosition + 30 * paddingMultiplier + elementPadding
+    UpdateFrameSize()
 
     return button
 end
@@ -728,6 +273,7 @@ function CreateToggle(toggleName, defaultState, callback)
     end)
 
     currentYPosition = currentYPosition + 25 * paddingMultiplier + elementPadding
+    UpdateFrameSize()
 
     return toggleFrame
 end
@@ -747,6 +293,7 @@ function CreateLabel(labelText, warning)
     label.Parent = contentFrame
 
     currentYPosition = currentYPosition + 18 * paddingMultiplier + elementPadding
+    UpdateFrameSize()
 
     return label
 end
