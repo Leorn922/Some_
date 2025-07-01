@@ -334,13 +334,13 @@ titleBar.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
-    end
-end)
-
-titleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+        
+        -- Capture focus to prevent other inputs
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
@@ -355,31 +355,12 @@ UserInputService.InputChanged:Connect(function(input)
             startPos.Y.Offset + delta.Y
         )
         
-        -- Keep within screen bounds
-        local screenWidth = workspace.CurrentCamera.ViewportSize.X
-        local screenHeight = workspace.CurrentCamera.ViewportSize.Y
-        local frameSize = mainFrame.AbsoluteSize
-        
-        -- Calculate boundaries
-        local minX = frameSize.X / 2
-        local maxX = screenWidth - frameSize.X / 2
-        local minY = frameSize.Y / 2
-        local maxY = screenHeight - frameSize.Y / 2
-        
-        -- Get current position in pixels
-        local posX = newPos.X.Offset
-        local posY = newPos.Y.Offset
-        
-        -- Clamp position to screen boundaries
-        posX = math.clamp(posX, minX, maxX)
-        posY = math.clamp(posY, minY, maxY)
-        
-        -- Update position
-        mainFrame.Position = UDim2.new(0.5, posX, 0.5, posY)
+        -- Update position immediately without clamping
+        mainFrame.Position = newPos
     end
 end)
 
--- ===== DRAGGING SYSTEM FOR ICON =====
+-- ===== FIXED DRAGGING SYSTEM FOR ICON =====
 local iconDragging = false
 local iconDragStart
 local iconStartPos
@@ -390,13 +371,13 @@ iconButton.InputBegan:Connect(function(input)
         iconDragging = true
         iconDragStart = input.Position
         iconStartPos = iconButton.Position
-    end
-end)
-
-iconButton.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-       input.UserInputType == Enum.UserInputType.Touch then
-        iconDragging = false
+        
+        -- Capture focus to prevent other inputs
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                iconDragging = false
+            end
+        end)
     end
 end)
 
@@ -411,27 +392,8 @@ UserInputService.InputChanged:Connect(function(input)
             iconStartPos.Y.Offset + delta.Y
         )
         
-        -- Keep within screen bounds
-        local screenWidth = workspace.CurrentCamera.ViewportSize.X
-        local screenHeight = workspace.CurrentCamera.ViewportSize.Y
-        local iconSize = iconButton.AbsoluteSize
-        
-        -- Calculate boundaries
-        local minX = iconSize.X / 2
-        local maxX = screenWidth - iconSize.X / 2
-        local minY = iconSize.Y / 2
-        local maxY = screenHeight - iconSize.Y / 2
-        
-        -- Get current position in pixels
-        local posX = newPos.X.Offset
-        local posY = newPos.Y.Offset
-        
-        -- Clamp position to screen boundaries
-        posX = math.clamp(posX, minX, maxX)
-        posY = math.clamp(posY, minY, maxY)
-        
-        -- Update position
-        iconButton.Position = UDim2.new(0, posX, 0, posY)
+        -- Update position immediately
+        iconButton.Position = newPos
     end
 end)
 
@@ -585,7 +547,7 @@ CreateToggle('Auto Equip For Bank', false, function(state, inputText)
     -- Cleanup previous connection
     if autoBankEquipLoop then
         autoBankEquipLoop:Disconnect()
-       autoBankEquipLoop = nil
+        autoBankEquipLoop = nil
     end
 
     if autoBankEquipActive then
@@ -627,8 +589,7 @@ CreateButton('Kill All Players', function()
             
             -- Check if humanoid belongs to a player
             for _, player in ipairs(Players:GetPlayers()) do
-                if parentName == player.Name then
-                    isPlayer = true
+                if parentName == player.Name then isPlayer = true
                     break
                 end
             end
@@ -653,3 +614,4 @@ if isMobile then
         mainFrame.Size = UDim2.new(0, newBaseSize, 0, mainFrame.AbsoluteSize.Y)
     end)
 end
+              
