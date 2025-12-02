@@ -1,1 +1,810 @@
-Uh
+--[[ STANDALONE AUTO BRING GUI ]]--
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local workspace = game:GetService("Workspace")
+local runService = game:GetService("RunService")
+local tweenService = game:GetService("TweenService")
+local userInputService = game:GetService("UserInputService")
+
+-- Autobring system variables
+local autobringTargets = {}
+local autobringLoops = {}
+local autobringRange = 50
+local autobringInterval = 0.5
+local isGUIEnabled = false
+
+-- Create GUI
+local autobringGUI = Instance.new("ScreenGui")
+autobringGUI.Name = "AutobringGUI"
+autobringGUI.ResetOnSpawn = false
+autobringGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Main window
+local mainWindow = Instance.new("Frame")
+mainWindow.Name = "MainWindow"
+mainWindow.Parent = autobringGUI
+mainWindow.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainWindow.BorderSizePixel = 0
+mainWindow.Position = UDim2.new(0.02, 0, 0.02, 0)
+mainWindow.Size = UDim2.new(0, 320, 0, 400)
+mainWindow.ClipsDescendants = true
+
+local windowCorner = Instance.new("UICorner")
+windowCorner.CornerRadius = UDim.new(0, 8)
+windowCorner.Parent = mainWindow
+
+local windowStroke = Instance.new("UIStroke")
+windowStroke.Color = Color3.fromRGB(60, 60, 60)
+windowStroke.Thickness = 2
+windowStroke.Parent = mainWindow
+
+-- Title bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Parent = mainWindow
+titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+titleBar.BorderSizePixel = 0
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Parent = titleBar
+titleLabel.BackgroundTransparency = 1
+titleLabel.Position = UDim2.new(0.05, 0, 0, 0)
+titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "🔄 AUTO BRING"
+titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+titleLabel.TextSize = 16
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Close button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Parent = titleBar
+closeButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+closeButton.BorderSizePixel = 0
+closeButton.Position = UDim2.new(0.85, 0, 0.2, 0)
+closeButton.Size = UDim2.new(0.1, 0, 0.6, 0)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+closeButton.TextSize = 14
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+
+-- Minimize button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Parent = titleBar
+minimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 180)
+minimizeButton.BorderSizePixel = 0
+minimizeButton.Position = UDim2.new(0.7, 0, 0.2, 0)
+minimizeButton.Size = UDim2.new(0.1, 0, 0.6, 0)
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.Text = "—"
+minimizeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+minimizeButton.TextSize = 14
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 6)
+minimizeCorner.Parent = minimizeButton
+
+-- Player list section
+local playerListSection = Instance.new("Frame")
+playerListSection.Name = "PlayerListSection"
+playerListSection.Parent = mainWindow
+playerListSection.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+playerListSection.BorderSizePixel = 0
+playerListSection.Position = UDim2.new(0.05, 0, 0.12, 0)
+playerListSection.Size = UDim2.new(0.9, 0, 0.35, 0)
+
+local sectionCorner = Instance.new("UICorner")
+sectionCorner.CornerRadius = UDim.new(0, 6)
+sectionCorner.Parent = playerListSection
+
+local sectionLabel = Instance.new("TextLabel")
+sectionLabel.Name = "SectionLabel"
+sectionLabel.Parent = playerListSection
+sectionLabel.BackgroundTransparency = 1
+sectionLabel.Position = UDim2.new(0.05, 0, 0, 0)
+sectionLabel.Size = UDim2.new(0.9, 0, 0, 25)
+sectionLabel.Font = Enum.Font.Gotham
+sectionLabel.Text = "🎮 PLAYERS ONLINE"
+sectionLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+sectionLabel.TextSize = 13
+sectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Player list scrolling frame
+local playerScrollFrame = Instance.new("ScrollingFrame")
+playerScrollFrame.Name = "PlayerScrollFrame"
+playerScrollFrame.Parent = playerListSection
+playerScrollFrame.BackgroundTransparency = 1
+playerScrollFrame.BorderSizePixel = 0
+playerScrollFrame.Position = UDim2.new(0, 0, 0.15, 0)
+playerScrollFrame.Size = UDim2.new(1, 0, 0.85, 0)
+playerScrollFrame.ScrollBarThickness = 4
+playerScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+playerScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+playerScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local playerListLayout = Instance.new("UIListLayout")
+playerListLayout.Name = "PlayerListLayout"
+playerListLayout.Parent = playerScrollFrame
+playerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+playerListLayout.Padding = UDim.new(0, 5)
+
+-- Controls section
+local controlsSection = Instance.new("Frame")
+controlsSection.Name = "ControlsSection"
+controlsSection.Parent = mainWindow
+controlsSection.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+controlsSection.BorderSizePixel = 0
+controlsSection.Position = UDim2.new(0.05, 0, 0.5, 0)
+controlsSection.Size = UDim2.new(0.9, 0, 0.35, 0)
+
+local controlsCorner = Instance.new("UICorner")
+controlsCorner.CornerRadius = UDim.new(0, 6)
+controlsCorner.Parent = controlsSection
+
+-- Target input
+local targetInputFrame = Instance.new("Frame")
+targetInputFrame.Name = "TargetInputFrame"
+targetInputFrame.Parent = controlsSection
+targetInputFrame.BackgroundTransparency = 1
+targetInputFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+targetInputFrame.Size = UDim2.new(0.9, 0, 0, 35)
+
+local targetLabel = Instance.new("TextLabel")
+targetLabel.Name = "TargetLabel"
+targetLabel.Parent = targetInputFrame
+targetLabel.BackgroundTransparency = 1
+targetLabel.Position = UDim2.new(0, 0, 0, 0)
+targetLabel.Size = UDim2.new(0.3, 0, 1, 0)
+targetLabel.Font = Enum.Font.Gotham
+targetLabel.Text = "Target:"
+targetLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+targetLabel.TextSize = 14
+targetLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local targetTextBox = Instance.new("TextBox")
+targetTextBox.Name = "TargetTextBox"
+targetTextBox.Parent = targetInputFrame
+targetTextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+targetTextBox.BorderSizePixel = 0
+targetTextBox.Position = UDim2.new(0.35, 0, 0.1, 0)
+targetTextBox.Size = UDim2.new(0.4, 0, 0.8, 0)
+targetTextBox.Font = Enum.Font.Gotham
+targetTextBox.PlaceholderText = "Enter name"
+targetTextBox.Text = ""
+targetTextBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+targetTextBox.TextSize = 13
+
+local textBoxCorner = Instance.new("UICorner")
+textBoxCorner.CornerRadius = UDim.new(0, 4)
+textBoxCorner.Parent = targetTextBox
+
+local addButton = Instance.new("TextButton")
+addButton.Name = "AddButton"
+addButton.Parent = targetInputFrame
+addButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+addButton.BorderSizePixel = 0
+addButton.Position = UDim2.new(0.8, 0, 0.1, 0)
+addButton.Size = UDim2.new(0.15, 0, 0.8, 0)
+addButton.Font = Enum.Font.GothamBold
+addButton.Text = "+"
+addButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+addButton.TextSize = 16
+
+local addButtonCorner = Instance.new("UICorner")
+addButtonCorner.CornerRadius = UDim.new(0, 4)
+addButtonCorner.Parent = addButton
+
+-- Range controls
+local rangeControlFrame = Instance.new("Frame")
+rangeControlFrame.Name = "RangeControlFrame"
+rangeControlFrame.Parent = controlsSection
+rangeControlFrame.BackgroundTransparency = 1
+rangeControlFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+rangeControlFrame.Size = UDim2.new(0.9, 0, 0, 35)
+
+local rangeLabel = Instance.new("TextLabel")
+rangeLabel.Name = "RangeLabel"
+rangeLabel.Parent = rangeControlFrame
+rangeLabel.BackgroundTransparency = 1
+rangeLabel.Position = UDim2.new(0, 0, 0, 0)
+rangeLabel.Size = UDim2.new(0.3, 0, 1, 0)
+rangeLabel.Font = Enum.Font.Gotham
+rangeLabel.Text = "Range:"
+rangeLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+rangeLabel.TextSize = 14
+rangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local rangeValueLabel = Instance.new("TextLabel")
+rangeValueLabel.Name = "RangeValueLabel"
+rangeValueLabel.Parent = rangeControlFrame
+rangeValueLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+rangeValueLabel.BorderSizePixel = 0
+rangeValueLabel.Position = UDim2.new(0.35, 0, 0.1, 0)
+rangeValueLabel.Size = UDim2.new(0.25, 0, 0.8, 0)
+rangeValueLabel.Font = Enum.Font.GothamBold
+rangeValueLabel.Text = "50"
+rangeValueLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+rangeValueLabel.TextSize = 14
+
+local rangeValueCorner = Instance.new("UICorner")
+rangeValueCorner.CornerRadius = UDim.new(0, 4)
+rangeValueCorner.Parent = rangeValueLabel
+
+local rangeMinusButton = Instance.new("TextButton")
+rangeMinusButton.Name = "RangeMinusButton"
+rangeMinusButton.Parent = rangeControlFrame
+rangeMinusButton.BackgroundColor3 = Color3.fromRGB(60, 60, 180)
+rangeMinusButton.BorderSizePixel = 0
+rangeMinusButton.Position = UDim2.new(0.62, 0, 0.1, 0)
+rangeMinusButton.Size = UDim2.new(0.1, 0, 0.8, 0)
+rangeMinusButton.Font = Enum.Font.GothamBold
+rangeMinusButton.Text = "-"
+rangeMinusButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+rangeMinusButton.TextSize = 16
+
+local rangePlusButton = Instance.new("TextButton")
+rangePlusButton.Name = "RangePlusButton"
+rangePlusButton.Parent = rangeControlFrame
+rangePlusButton.BackgroundColor3 = Color3.fromRGB(60, 60, 180)
+rangePlusButton.BorderSizePixel = 0
+rangePlusButton.Position = UDim2.new(0.74, 0, 0.1, 0)
+rangePlusButton.Size = UDim2.new(0.1, 0, 0.8, 0)
+rangePlusButton.Font = Enum.Font.GothamBold
+rangePlusButton.Text = "+"
+rangePlusButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+rangePlusButton.TextSize = 16
+
+local rangeButtonCorner = Instance.new("UICorner")
+rangeButtonCorner.CornerRadius = UDim.new(0, 4)
+rangeButtonCorner.Parent = rangeMinusButton
+rangePlusButton:WaitForChild("UICorner")
+
+-- Active targets section
+local activeSection = Instance.new("Frame")
+activeSection.Name = "ActiveSection"
+activeSection.Parent = controlsSection
+activeSection.BackgroundTransparency = 1
+activeSection.Position = UDim2.new(0.05, 0, 0.6, 0)
+activeSection.Size = UDim2.new(0.9, 0, 0.35, 0)
+
+local activeLabel = Instance.new("TextLabel")
+activeLabel.Name = "ActiveLabel"
+activeLabel.Parent = activeSection
+activeLabel.BackgroundTransparency = 1
+activeLabel.Size = UDim2.new(1, 0, 0.3, 0)
+activeLabel.Font = Enum.Font.Gotham
+activeLabel.Text = "🎯 ACTIVE TARGETS"
+activeLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+activeLabel.TextSize = 13
+activeLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local activeScrollFrame = Instance.new("ScrollingFrame")
+activeScrollFrame.Name = "ActiveScrollFrame"
+activeScrollFrame.Parent = activeSection
+activeScrollFrame.BackgroundTransparency = 1
+activeScrollFrame.BorderSizePixel = 0
+activeScrollFrame.Position = UDim2.new(0, 0, 0.3, 0)
+activeScrollFrame.Size = UDim2.new(1, 0, 0.7, 0)
+activeScrollFrame.ScrollBarThickness = 4
+activeScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+activeScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+activeScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local activeListLayout = Instance.new("UIListLayout")
+activeListLayout.Name = "ActiveListLayout"
+activeListLayout.Parent = activeScrollFrame
+activeListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+activeListLayout.Padding = UDim.new(0, 5)
+
+-- Control buttons at bottom
+local controlButtonsFrame = Instance.new("Frame")
+controlButtonsFrame.Name = "ControlButtonsFrame"
+controlButtonsFrame.Parent = mainWindow
+controlButtonsFrame.BackgroundTransparency = 1
+controlButtonsFrame.Position = UDim2.new(0.05, 0, 0.88, 0)
+controlButtonsFrame.Size = UDim2.new(0.9, 0, 0, 35)
+
+local startAllButton = Instance.new("TextButton")
+startAllButton.Name = "StartAllButton"
+startAllButton.Parent = controlButtonsFrame
+startAllButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+startAllButton.BorderSizePixel = 0
+startAllButton.Position = UDim2.new(0, 0, 0, 0)
+startAllButton.Size = UDim2.new(0.48, 0, 1, 0)
+startAllButton.Font = Enum.Font.GothamBold
+startAllButton.Text = "START ALL"
+startAllButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+startAllButton.TextSize = 13
+
+local stopAllButton = Instance.new("TextButton")
+stopAllButton.Name = "StopAllButton"
+stopAllButton.Parent = controlButtonsFrame
+stopAllButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+stopAllButton.BorderSizePixel = 0
+stopAllButton.Position = UDim2.new(0.52, 0, 0, 0)
+stopAllButton.Size = UDim2.new(0.48, 0, 1, 0)
+stopAllButton.Font = Enum.Font.GothamBold
+stopAllButton.Text = "STOP ALL"
+stopAllButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+stopAllButton.TextSize = 13
+
+local controlButtonCorner = Instance.new("UICorner")
+controlButtonCorner.CornerRadius = UDim.new(0, 6)
+controlButtonCorner.Parent = startAllButton
+stopAllButton:WaitForChild("UICorner")
+
+-- Status bar
+local statusBar = Instance.new("Frame")
+statusBar.Name = "StatusBar"
+statusBar.Parent = mainWindow
+statusBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+statusBar.BorderSizePixel = 0
+statusBar.Position = UDim2.new(0, 0, 0.96, 0)
+statusBar.Size = UDim2.new(1, 0, 0.04, 0)
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Parent = statusBar
+statusLabel.BackgroundTransparency = 1
+statusLabel.Size = UDim2.new(1, 0, 1, 0)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Text = "Ready"
+statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+statusLabel.TextSize = 11
+
+-- Toggle button (floating button to show/hide GUI)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Parent = autobringGUI
+toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 180)
+toggleButton.BorderSizePixel = 0
+toggleButton.Position = UDim2.new(0.95, 0, 0.02, 0)
+toggleButton.Size = UDim2.new(0, 40, 0, 40)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Text = "AB"
+toggleButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+toggleButton.TextSize = 14
+toggleButton.Visible = true
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggleButton
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(100, 100, 100)
+toggleStroke.Thickness = 2
+toggleStroke.Parent = toggleButton
+
+-- Parent GUI to CoreGui
+local success, errorMsg = pcall(function()
+    autobringGUI.Parent = game:GetService("CoreGui")
+end)
+
+if not success then
+    autobringGUI.Parent = localPlayer:WaitForChild("PlayerGui")
+end
+
+-- Function to update player list
+local function updatePlayerList()
+    for _, v in pairs(playerScrollFrame:GetChildren()) do
+        if v:IsA("TextButton") then
+            v:Destroy()
+        end
+    end
+    
+    for _, player in pairs(players:GetPlayers()) do
+        if player == localPlayer then continue end
+        
+        local playerButton = Instance.new("TextButton")
+        playerButton.Name = player.Name
+        playerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        playerButton.BorderSizePixel = 0
+        playerButton.Size = UDim2.new(1, -10, 0, 35)
+        playerButton.Font = Enum.Font.Gotham
+        playerButton.Text = "👤 " .. player.Name
+        playerButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+        playerButton.TextSize = 13
+        playerButton.TextXAlignment = Enum.TextXAlignment.Left
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = playerButton
+        
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 10)
+        padding.Parent = playerButton
+        
+        -- Hover effect
+        playerButton.MouseEnter:Connect(function()
+            playerButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end)
+        
+        playerButton.MouseLeave:Connect(function()
+            playerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        end)
+        
+        -- Click to add
+        playerButton.MouseButton1Click:Connect(function()
+            targetTextBox.Text = player.Name
+            statusLabel.Text = "Selected: " .. player.Name
+        end)
+        
+        -- Right click to toggle autobring
+        playerButton.MouseButton2Click:Connect(function()
+            if autobringTargets[player.Name] then
+                stopAutobring(player.Name)
+            else
+                startAutobring(player.Name)
+            end
+        end)
+        
+        playerButton.Parent = playerScrollFrame
+    end
+end
+
+-- Function to update active targets list
+local function updateActiveList()
+    for _, v in pairs(activeScrollFrame:GetChildren()) do
+        if v:IsA("Frame") then
+            v:Destroy()
+        end
+    end
+    
+    for playerName, _ in pairs(autobringTargets) do
+        local entryFrame = Instance.new("Frame")
+        entryFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        entryFrame.BorderSizePixel = 0
+        entryFrame.Size = UDim2.new(1, -5, 0, 30)
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = entryFrame
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Position = UDim2.new(0.05, 0, 0, 0)
+        nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        nameLabel.Font = Enum.Font.Gotham
+        nameLabel.Text = "🎯 " .. playerName
+        nameLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+        nameLabel.TextSize = 12
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 5)
+        padding.Parent = nameLabel
+        
+        nameLabel.Parent = entryFrame
+        
+        local stopButton = Instance.new("TextButton")
+        stopButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+        stopButton.BorderSizePixel = 0
+        stopButton.Position = UDim2.new(0.7, 0, 0.1, 0)
+        stopButton.Size = UDim2.new(0.25, 0, 0.8, 0)
+        stopButton.Font = Enum.Font.GothamBold
+        stopButton.Text = "STOP"
+        stopButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+        stopButton.TextSize = 11
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = stopButton
+        
+        stopButton.MouseButton1Click:Connect(function()
+            stopAutobring(playerName)
+        end)
+        
+        stopButton.Parent = entryFrame
+        entryFrame.Parent = activeScrollFrame
+    end
+end
+
+-- Autobring Functions
+local function getCharacterRoot(character)
+    if not character then return nil end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.RootPart then
+        return humanoid.RootPart
+    end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then return hrp end
+    
+    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    if torso then return torso end
+    
+    return character:FindFirstChild("Head")
+end
+
+local function teleportPlayer(targetPlayer)
+    local myCharacter = localPlayer.Character
+    local targetCharacter = targetPlayer.Character
+    
+    if not myCharacter or not targetCharacter then return false end
+    
+    local myRoot = getCharacterRoot(myCharacter)
+    local targetRoot = getCharacterRoot(targetCharacter)
+    
+    if not myRoot or not targetRoot then return false end
+    
+    -- Try to teleport using different methods
+    
+    -- Method 1: Direct CFrame
+    targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+    
+    -- Method 2: Break joints and teleport
+    targetCharacter:BreakJoints()
+    task.wait(0.1)
+    targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+    
+    return true
+end
+
+local function startAutobring(playerName)
+    local player = players:FindFirstChild(playerName)
+    if not player or player == localPlayer then
+        statusLabel.Text = "Invalid player!"
+        return
+    end
+    
+    if autobringTargets[playerName] then
+        statusLabel.Text = "Already autobringing " .. playerName
+        return
+    end
+    
+    autobringTargets[playerName] = player
+    statusLabel.Text = "Started autobring: " .. playerName
+    
+    local loop = runService.Heartbeat:Connect(function()
+        if not autobringTargets[playerName] then
+            loop:Disconnect()
+            return
+        end
+        
+        local targetPlayer = players:FindFirstChild(playerName)
+        if not targetPlayer or not targetPlayer.Character then
+            autobringTargets[playerName] = nil
+            loop:Disconnect()
+            updateActiveList()
+            statusLabel.Text = playerName .. " left the game"
+            return
+        end
+        
+        local myCharacter = localPlayer.Character
+        local targetCharacter = targetPlayer.Character
+        
+        if not myCharacter or not targetCharacter then return end
+        
+        local myRoot = getCharacterRoot(myCharacter)
+        local targetRoot = getCharacterRoot(targetCharacter)
+        
+        if not myRoot or not targetRoot then return end
+        
+        local distance = (myRoot.Position - targetRoot.Position).Magnitude
+        
+        if distance > autobringRange then
+            teleportPlayer(targetPlayer)
+        end
+    end)
+    
+    autobringLoops[playerName] = loop
+    updateActiveList()
+end
+
+local function stopAutobring(playerName)
+    if autobringTargets[playerName] then
+        autobringTargets[playerName] = nil
+        
+        if autobringLoops[playerName] then
+            autobringLoops[playerName]:Disconnect()
+            autobringLoops[playerName] = nil
+        end
+        
+        updateActiveList()
+        statusLabel.Text = "Stopped: " .. playerName
+    end
+end
+
+local function stopAllAutobring()
+    for playerName, _ in pairs(autobringTargets) do
+        stopAutobring(playerName)
+    end
+    statusLabel.Text = "All autobrings stopped"
+end
+
+-- GUI Event Connections
+local dragging = false
+local dragStart = Vector2.new(0, 0)
+local windowStart = UDim2.new(0, 0, 0, 0)
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        windowStart = mainWindow.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+userInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainWindow.Position = UDim2.new(
+            windowStart.X.Scale,
+            windowStart.X.Offset + delta.X,
+            windowStart.Y.Scale,
+            windowStart.Y.Offset + delta.Y
+        )
+    end
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    autobringGUI:Destroy()
+end)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    local isVisible = playerListSection.Visible
+    playerListSection.Visible = not isVisible
+    controlsSection.Visible = not isVisible
+    controlButtonsFrame.Visible = not isVisible
+    
+    if isVisible then
+        mainWindow.Size = UDim2.new(0, 320, 0, 60)
+        minimizeButton.Text = "+"
+    else
+        mainWindow.Size = UDim2.new(0, 320, 0, 400)
+        minimizeButton.Text = "—"
+    end
+end)
+
+toggleButton.MouseButton1Click:Connect(function()
+    isGUIEnabled = not isGUIEnabled
+    mainWindow.Visible = isGUIEnabled
+    
+    if isGUIEnabled then
+        updatePlayerList()
+        updateActiveList()
+        statusLabel.Text = "GUI Enabled"
+    else
+        statusLabel.Text = "GUI Hidden"
+    end
+end)
+
+addButton.MouseButton1Click:Connect(function()
+    local playerName = targetTextBox.Text
+    if playerName ~= "" then
+        startAutobring(playerName)
+        targetTextBox.Text = ""
+    end
+end)
+
+targetTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        addButton.MouseButton1Click:Connect()
+    end
+end)
+
+rangePlusButton.MouseButton1Click:Connect(function()
+    autobringRange = autobringRange + 5
+    if autobringRange > 200 then autobringRange = 5 end
+    rangeValueLabel.Text = tostring(autobringRange)
+    statusLabel.Text = "Range: " .. autobringRange
+end)
+
+rangeMinusButton.MouseButton1Click:Connect(function()
+    autobringRange = autobringRange - 5
+    if autobringRange < 5 then autobringRange = 200 end
+    rangeValueLabel.Text = tostring(autobringRange)
+    statusLabel.Text = "Range: " .. autobringRange
+end)
+
+startAllButton.MouseButton1Click:Connect(function()
+    for _, player in pairs(players:GetPlayers()) do
+        if player ~= localPlayer then
+            startAutobring(player.Name)
+        end
+    end
+    statusLabel.Text = "Started autobring for all players"
+end)
+
+stopAllButton.MouseButton1Click:Connect(function()
+    stopAllAutobring()
+end)
+
+-- Player tracking
+players.PlayerAdded:Connect(function(player)
+    task.wait(0.5)
+    if isGUIEnabled then
+        updatePlayerList()
+    end
+end)
+
+players.PlayerRemoving:Connect(function(player)
+    task.wait(0.5)
+    if isGUIEnabled then
+        updatePlayerList()
+    end
+    if autobringTargets[player.Name] then
+        stopAutobring(player.Name)
+    end
+end)
+
+-- Update lists periodically
+local updateLoop = runService.Heartbeat:Connect(function()
+    if isGUIEnabled then
+        updatePlayerList()
+        updateActiveList()
+    end
+end)
+
+-- Auto-start GUI
+task.spawn(function()
+    task.wait(1)
+    isGUIEnabled = true
+    mainWindow.Visible = true
+    updatePlayerList()
+    updateActiveList()
+    statusLabel.Text = "Ready - Click players to autobring"
+end)
+
+-- Add visual feedback
+addButton.MouseEnter:Connect(function()
+    addButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+end)
+
+addButton.MouseLeave:Connect(function()
+    addButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+end)
+
+-- Make toggle button draggable too
+local toggleDragging = false
+local toggleStart = Vector2.new(0, 0)
+local togglePosStart = UDim2.new(0, 0, 0, 0)
+
+toggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        toggleDragging = true
+        toggleStart = input.Position
+        togglePosStart = toggleButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                toggleDragging = false
+            end
+        end)
+    end
+end)
+
+userInputService.InputChanged:Connect(function(input)
+    if toggleDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - toggleStart
+        toggleButton.Position = UDim2.new(
+            togglePosStart.X.Scale,
+            togglePosStart.X.Offset + delta.X,
+            togglePosStart.Y.Scale,
+            togglePosStart.Y.Offset + delta.Y
+        )
+    end
+end)
+
+print("🎯 Autobring GUI loaded successfully!")
+print("📌 Click the floating 'AB' button to toggle the GUI")
+print("🎮 Right-click players in the list to toggle autobring")
