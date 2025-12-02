@@ -1,0 +1,325 @@
+-- SIMPLE AUTO BRING GUI - TYPE PLAYER NAME
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+
+-- Autobring system
+local autobringTarget = nil
+local autobringActive = false
+local autobringRange = 30
+local autobringLoop = nil
+
+-- Create GUI - SUPER SIMPLE
+local gui = Instance.new("ScreenGui")
+gui.Name = "SimpleAutobring"
+gui.ResetOnSpawn = false
+
+-- Put in CoreGui for visibility
+if game:GetService("CoreGui") then
+    gui.Parent = game:GetService("CoreGui")
+else
+    gui.Parent = localPlayer:WaitForChild("PlayerGui")
+end
+
+-- Main Window
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.Parent = gui
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+main.BorderSizePixel = 0
+main.Position = UDim2.new(0.5, -125, 0.5, -75)
+main.Size = UDim2.new(0, 250, 0, 150)
+main.Visible = true
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Parent = main
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Font = Enum.Font.GothamBold
+title.Text = "AUTO BRING"
+title.TextColor3 = Color3.fromRGB(220, 220, 220)
+title.TextSize = 16
+
+-- Player Name Input
+local nameFrame = Instance.new("Frame")
+nameFrame.Parent = main
+nameFrame.BackgroundTransparency = 1
+nameFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+nameFrame.Size = UDim2.new(0.9, 0, 0, 30)
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Parent = nameFrame
+nameLabel.BackgroundTransparency = 1
+nameLabel.Size = UDim2.new(0.3, 0, 1, 0)
+nameLabel.Font = Enum.Font.Gotham
+nameLabel.Text = "Name:"
+nameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+nameLabel.TextSize = 14
+nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local nameBox = Instance.new("TextBox")
+nameBox.Parent = nameFrame
+nameBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+nameBox.BorderSizePixel = 0
+nameBox.Position = UDim2.new(0.35, 0, 0, 0)
+nameBox.Size = UDim2.new(0.65, 0, 1, 0)
+nameBox.Font = Enum.Font.Gotham
+nameBox.PlaceholderText = "Type player name"
+nameBox.Text = ""
+nameBox.TextColor3 = Color3.fromRGB(220, 220, 220)
+nameBox.TextSize = 14
+nameBox.ClearTextOnFocus = false
+
+-- Status Display
+local status = Instance.new("TextLabel")
+status.Parent = main
+status.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+status.BorderSizePixel = 0
+status.Position = UDim2.new(0.05, 0, 0.55, 0)
+status.Size = UDim2.new(0.9, 0, 0, 25)
+status.Font = Enum.Font.Gotham
+status.Text = "Ready - Type player name"
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.TextSize = 12
+
+-- Buttons
+local buttonFrame = Instance.new("Frame")
+buttonFrame.Parent = main
+buttonFrame.BackgroundTransparency = 1
+buttonFrame.Position = UDim2.new(0.05, 0, 0.8, 0)
+buttonFrame.Size = UDim2.new(0.9, 0, 0, 30)
+
+local startBtn = Instance.new("TextButton")
+startBtn.Parent = buttonFrame
+startBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+startBtn.BorderSizePixel = 0
+startBtn.Size = UDim2.new(0.48, 0, 1, 0)
+startBtn.Font = Enum.Font.GothamBold
+startBtn.Text = "START"
+startBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+startBtn.TextSize = 14
+
+local stopBtn = Instance.new("TextButton")
+stopBtn.Parent = buttonFrame
+stopBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+stopBtn.BorderSizePixel = 0
+stopBtn.Position = UDim2.new(0.52, 0, 0, 0)
+stopBtn.Size = UDim2.new(0.48, 0, 1, 0)
+stopBtn.Font = Enum.Font.GothamBold
+stopBtn.Text = "STOP"
+stopBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+stopBtn.TextSize = 14
+
+-- Toggle Button
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Parent = gui
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 180)
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+toggleBtn.Size = UDim2.new(0, 40, 0, 40)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Text = "AB"
+toggleBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+toggleBtn.TextSize = 14
+toggleBtn.Visible = true
+
+-- Get character root part
+local function getCharacterRoot(character)
+    if not character then return nil end
+    
+    -- Try different parts in order
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.RootPart then
+        return humanoid.RootPart
+    end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then return hrp end
+    
+    local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    if torso then return torso end
+    
+    return character:FindFirstChild("Head")
+end
+
+-- Teleport player to me
+local function bringPlayer()
+    if not autobringTarget or not autobringActive then return end
+    
+    local targetChar = autobringTarget.Character
+    local myChar = localPlayer.Character
+    
+    if not targetChar or not myChar then return end
+    
+    local targetRoot = getCharacterRoot(targetChar)
+    local myRoot = getCharacterRoot(myChar)
+    
+    if not targetRoot or not myRoot then return end
+    
+    -- Check distance
+    local distance = (myRoot.Position - targetRoot.Position).Magnitude
+    
+    if distance > autobringRange then
+        -- Teleport them to me
+        targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
+    end
+end
+
+-- Find player by name
+local function findPlayerByName(name)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Name:lower():find(name:lower()) then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Start autobring
+startBtn.MouseButton1Click:Connect(function()
+    local playerName = nameBox.Text
+    if playerName == "" then
+        status.Text = "Type a player name first!"
+        return
+    end
+    
+    if autobringActive then
+        status.Text = "Already autobringing!"
+        return
+    end
+    
+    local player = findPlayerByName(playerName)
+    if not player then
+        status.Text = "Player not found: " .. playerName
+        return
+    end
+    
+    if player == localPlayer then
+        status.Text = "Can't autobring yourself!"
+        return
+    end
+    
+    autobringTarget = player
+    autobringActive = true
+    status.Text = "Autobringing: " .. player.Name
+    
+    -- Create autobring loop
+    autobringLoop = RunService.Heartbeat:Connect(function()
+        bringPlayer()
+    end)
+end)
+
+-- Stop autobring
+stopBtn.MouseButton1Click:Connect(function()
+    autobringActive = false
+    
+    if autobringLoop then
+        autobringLoop:Disconnect()
+        autobringLoop = nil
+    end
+    
+    status.Text = "Stopped autobring"
+    autobringTarget = nil
+end)
+
+-- Toggle GUI visibility
+toggleBtn.MouseButton1Click:Connect(function()
+    main.Visible = not main.Visible
+end)
+
+-- Track player leaving
+Players.PlayerRemoving:Connect(function(player)
+    if player == autobringTarget then
+        autobringActive = false
+        if autobringLoop then
+            autobringLoop:Disconnect()
+            autobringLoop = nil
+        end
+        autobringTarget = nil
+        status.Text = "Target left the game"
+    end
+end)
+
+-- Make draggable for mobile
+local dragging = false
+local dragStart = Vector2.new(0, 0)
+local startPos = UDim2.new(0, 0, 0, 0)
+
+-- Make window draggable
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+        
+        local connection
+        connection = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                connection:Disconnect()
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Also make toggle button draggable
+local toggleDragging = false
+local toggleStart = Vector2.new(0, 0)
+local toggleStartPos = UDim2.new(0, 0, 0, 0)
+
+toggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        toggleDragging = true
+        toggleStart = input.Position
+        toggleStartPos = toggleBtn.Position
+        
+        local connection
+        connection = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                toggleDragging = false
+                connection:Disconnect()
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if toggleDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - toggleStart
+        toggleBtn.Position = UDim2.new(
+            toggleStartPos.X.Scale,
+            toggleStartPos.X.Offset + delta.X,
+            toggleStartPos.Y.Scale,
+            toggleStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Mobile-friendly adjustments
+if UserInputService.TouchEnabled then
+    startBtn.TextSize = 16
+    stopBtn.TextSize = 16
+    nameBox.TextSize = 16
+    toggleBtn.TextSize = 18
+    toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+end
+
+print("✅ AutoBring GUI Loaded!")
+print("📝 Type player name in the box")
+print("🟢 Click START to begin")
+print("🔴 Click STOP to end")
+print("📱 Drag windows to move them")
